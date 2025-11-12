@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Kod Krizi — Teknoloji vs Olumsuz Yansıma (Güncellenmiş)</title>
+<style>
+  :root{
+    --bg1: #f2fbff;
+    --bg2: #e6f7f3;
+    --panel: #ffffff;
+    --accent: #1d7874;
+    --accent-2: #5cd6c0;
+    --tech-color: #ff7a59;
+    --impact-color: #5bd1ff;
+    --info-color: #ffd166;
+    --circle-size: 110px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;
+    background: linear-gradient(180deg,var(--bg1),var(--bg2));
+    color:#053046;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:18px;
+  }
+  .app{width:100%;max-width:1200px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  h1{margin:0;font-size:20px;color:var(--accent)}
+  p.lead{margin:0;color:#23555a;font-size:13px}
+
+  .board{position:relative;background:linear-gradient(180deg,#ffffff,#f7fbfb);border-radius:14px;padding:14px;min-height:640px;overflow:hidden;border:1px solid rgba(10,20,20,0.04)}
+  .svgLayer{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+
+  .hud{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+  .stat{background:linear-gradient(180deg,#fff,#f3fffb);padding:8px 12px;border-radius:12px;border:1px solid rgba(0,0,0,0.03);font-size:14px;color:#023;}
+  .btn{background:var(--accent);color:white;padding:8px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+  .btn.secondary{background:transparent;color:var(--accent);border:1px solid rgba(29,120,116,0.12)}
+
+  /* timer ring */
+  .timerWrap{display:flex;align-items:center;gap:8px}
+  .timerSvg{width:64px;height:64px;transform:rotate(-90deg)}
+  .timerLabel{text-align:center;font-weight:800;color:var(--accent);font-size:14px}
+
+  /* overlay */
+  .overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,40,39,0.85),rgba(255,255,255,0.02));display:flex;align-items:center;justify-content:center;z-index:60;padding:24px}
+  .card{background:linear-gradient(180deg,#ffffff,#f6fffd);padding:18px;border-radius:12px;max-width:900px;border:1px solid rgba(0,0,0,0.04);box-shadow:0 8px 24px rgba(2,22,22,0.06);color:#053046}
+  .card h2{margin:0;color:var(--accent)}
+  .flex-row{display:flex;gap:12px;align-items:center;justify-content:center;margin-top:12px;flex-wrap:wrap}
+
+  /* pieces */
+  .piecesContainer{position:relative;width:100%;height:520px}
+  .piece{position:absolute;width:var(--circle-size);height:var(--circle-size);border-radius:999px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;font-weight:700;user-select:none;cursor:pointer;box-shadow:0 10px 30px rgba(3,20,20,0.08);border:3px solid rgba(255,255,255,0.6)}
+  .piece .label{font-size:13px;line-height:1.15;padding:6px}
+  .tech{background:linear-gradient(135deg,var(--tech-color), #ffb199); color:#062023}
+  .impact{background:linear-gradient(135deg,var(--impact-color), #9ee7ff); color:#01313f}
+  .selected{outline:6px solid rgba(0,0,0,0.8); /* siyah çerçeve */;transform:scale(1.03)}
+  .frozen{opacity:0.9;cursor:default;filter:brightness(0.98)}
+  .infoPopup{position:absolute;left:12px;bottom:12px;background:#fff;padding:12px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);box-shadow:0 8px 20px rgba(3,20,20,0.06);max-width:360px;color:#053046}
+
+  .learnedList{margin-top:8px;display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto;padding-right:6px}
+  .learnItem{background:linear-gradient(90deg,#fff,#f7fffb);padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.03);font-size:13px}
+
+  .footer-note{margin-top:12px;color:#11686b;font-size:13px;text-align:center}
+
+  @media (max-width:900px){
+    :root{--circle-size:86px}
+    .piecesContainer{height:420px}
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>🌍 Kod Krizi — Teknoloji vs Olumsuz Yansıma</h1>
+        <p class="lead">Teknolojilerin çevreye olan olumsuz etkilerini eşleştir — dikkat çekici renklerle, kısa süre içinde!</p>
+      </div>
+      <div class="hud">
+        <div class="stat timerWrap">
+          <svg class="timerSvg" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="44" stroke="#e6f7f3" stroke-width="10" fill="none"></circle>
+            <circle id="timerCircle" cx="50" cy="50" r="44" stroke="#1d7874" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="0"></circle>
+          </svg>
+          <div class="timerLabel"><div id="timerNum">60</div><div style="font-size:11px;color:#2b6b67">süre</div></div>
+        </div>
+        <div class="stat">Puan: <strong id="score">0</strong></div>
+        <div class="stat">Eşleşme: <strong id="matchedCount">0</strong>/<strong id="totalPairs">7</strong></div>
+        <button id="restartBtn" class="btn secondary">Yeniden Başlat</button>
+      </div>
+    </header>
+
+    <div class="board" id="board">
+      <svg class="svgLayer" id="svgLayer" preserveAspectRatio="none"></svg>
+
+      <div class="piecesContainer" id="piecesContainer"></div>
+
+      <div class="overlay" id="startOverlay">
+        <div class="card">
+          <h2>Oyun Yönergesi</h2>
+          <p>Başla butonuna tıkladığında 60 saniye başlar. Ekrandaki daireler hareket ediyor — önce bir <strong>teknoloji</strong> dairesine tıkla, sonra o teknolojiye karşılık gelen <strong>olumsuz yansıma</strong> dairesine tıkla. Doğruysa aralarında yeşil çizgi oluşur, bilgi kartı gelir ve puan kazanırsın. Yanlışsa kırmızı uyarı ve puan azalır.</p>
+          <div class="flex-row" style="margin-top:12px">
+            <button id="startBtn" class="btn">Başla</button>
+            <button id="hintBtn" class="btn secondary">İpucu (2 hak)</button>
+          </div>
+          <div style="margin-top:12px" class="flex-row">
+            <div style="text-align:left">
+              <strong>Doğru:</strong> +10 puan<br/>
+              <strong>Yanlış:</strong> -5 puan<br/>
+              <strong>Erken bitirme bonusu:</strong> kalan saniye ×1 puan
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="infoPopup" class="infoPopup" style="display:none">
+        <div id="infoTitle" style="font-weight:800;color:var(--accent)"></div>
+        <div id="infoText" style="margin-top:6px;font-size:13px"></div>
+        <div style="margin-top:8px;font-size:12px;color:#11686b">Bu bilgi, son ekranda da görülebilir.</div>
+      </div>
+
+      <div class="footer-note">Not: Doğru eşleşince daireler sabitlenir. Hareket ve renkler dikkat için canlandırıldı.</div>
+    </div>
+  </div>
+
+<script>
+/* ======= Veri: 7 eşleşme (kullanıcının verdiği liste, netleştirildi) ======= */
+const PAIRS = [
+  { tech: 'Sanayileşme ve enerji üretimi', impact: 'Sera gazı salınımı', fact: 'Fosil yakıtlarla çalışan enerji santralleri, küresel sera gazı emisyonlarının büyük bölümünü oluşturur.' },
+  { tech: 'Maden arama ve kentleşme', impact: 'Orman alanlarının tahribi', fact: 'Yeni maden sahaları ve kentsel genişleme, doğal habitatların ve ormanların yok olmasına yol açar.' },
+  { tech: 'Büyük veri ve sunucular', impact: 'Yüksek enerji tüketimi', fact: 'Veri merkezleri soğutma ve işlem için yüksek miktarda elektrik harcar; verimli altyapı önemlidir.' },
+  { tech: 'Elektronik teknolojiler', impact: 'E-atıkların artması', fact: 'Kısa ömürlü cihazlar ve yüksek tüketim, elektronik atıkların hızla birikmesine neden olur.' },
+  { tech: 'Petrole dayalı plastik ürünler', impact: 'Okyanuslarda kirlilik ve felaket', fact: 'Plastikler okyanus ekosistemlerinde uzun süre parçalanır ve yaban hayatı için tehdit oluşturur.' },
+  { tech: 'Tarımda sentetik gübre', impact: 'Toprak ve su kirliliği', fact: 'Aşırı gübre kullanımı besin maddesi kaçaklarına ve su kaynaklarının kirlenmesine yol açar.' },
+  { tech: 'Hızlı üretim teknolojileri', impact: 'Kaynak tüketiminde hızlanma', fact: 'Hızlı üretim, doğal kaynakların daha çabuk tükenmesine neden olabilir; sürdürülebilir döngü önemlidir.' }
+];
+
+/* ===== DOM ===== */
+const board = document.getElementById('board');
+const svgLayer = document.getElementById('svgLayer');
+const piecesContainer = document.getElementById('piecesContainer');
+const startOverlay = document.getElementById('startOverlay');
+const startBtn = document.getElementById('startBtn');
+const restartBtn = document.getElementById('restartBtn');
+const hintBtn = document.getElementById('hintBtn');
+const infoPopup = document.getElementById('infoPopup');
+const infoTitle = document.getElementById('infoTitle');
+const infoText = document.getElementById('infoText');
+const timerNum = document.getElementById('timerNum');
+const timerCircle = document.getElementById('timerCircle');
+const scoreEl = document.getElementById('score');
+const matchedCountEl = document.getElementById('matchedCount');
+const totalPairsEl = document.getElementById('totalPairs');
+
+totalPairsEl.textContent = PAIRS.length;
+
+/* ===== state ===== */
+let pieces = []; // {id, kind, el, pairIndex, frozen}
+let velocities = new Map();
+let animationId = null;
+let selected = null;
+let matchedCount = 0;
+let score = 0;
+let timeLeft = 60;
+let timerInterval = null;
+let running = false;
+let hintsLeft = 2;
+let learnedFacts = []; // collected facts
+
+/* utils */
+function rand(min,max){ return Math.random()*(max-min)+min; }
+function boardRect(){ return board.getBoundingClientRect(); }
+
+/* create pieces: technologies on left, impacts on right. Shuffle order */
+function createPieces(){
+  piecesContainer.innerHTML = '';
+  pieces = [];
+  velocities.clear();
+  matchedCount = 0; score = 0; timeLeft = 60; learnedFacts = [];
+  hintsLeft = 2;
+  updateHUD();
+
+  const shuffled = PAIRS.map((p,i)=>({p,i})).sort(()=>Math.random()-0.5);
+  // create techs
+  shuffled.forEach((item, idx)=>{
+    const id = 'T'+idx;
+    const el = document.createElement('div');
+    el.className = 'piece tech';
+    el.dataset.id = id;
+    el.dataset.kind = 'tech';
+    el.innerHTML = `<div class="label">${item.p.tech}</div>`;
+    piecesContainer.appendChild(el);
+    pieces.push({ id, kind:'tech', el, pairIndex: item.i, frozen:false });
+  });
+  // impacts
+  shuffled.forEach((item, idx)=>{
+    const id = 'I'+idx;
+    const el = document.createElement('div');
+    el.className = 'piece impact';
+    el.dataset.id = id;
+    el.dataset.kind = 'impact';
+    el.innerHTML = `<div class="label">${item.p.impact}</div>`;
+    piecesContainer.appendChild(el);
+    pieces.push({ id, kind:'impact', el, pairIndex: item.i, frozen:false });
+  });
+
+  positionPiecesInitial();
+  addPieceListeners();
+}
+
+/* position in left / right halves */
+function positionPiecesInitial(){
+  const rect = boardRect();
+  const cSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--circle-size')) || 110;
+  const margin = 12;
+  const leftArea = { x1: margin, x2: rect.width/2 - cSize - margin, y1: margin, y2: rect.height - cSize - margin };
+  const rightArea = { x1: rect.width/2 + margin, x2: rect.width - cSize - margin, y1: margin, y2: rect.height - cSize - margin };
+
+  pieces.forEach(p=>{
+    const el = p.el;
+    let area = p.kind === 'tech' ? leftArea : rightArea;
+    const x = rand(area.x1, area.x2);
+    const y = rand(area.y1, area.y2);
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    // slight rotation
+    el.style.transform = `rotate(${rand(-6,6)}deg)`;
+    // velocity
+    velocities.set(p.id, { vx: rand(-0.7,0.7), vy: rand(-0.6,0.6) });
+  });
+}
+
+/* listeners */
+function addPieceListeners(){
+  pieces.forEach(p=>{
+    p.el.addEventListener('click', (e)=>{
+      if(!running) return;
+      if(p.frozen) return;
+      handlePieceClick(p);
+      e.stopPropagation();
+    });
+  });
+}
+
+/* handle click logic */
+function handlePieceClick(p){
+  if(!selected){
+    selected = p;
+    p.el.classList.add('selected');
+    return;
+  }
+  // same clicked -> deselect
+  if(selected.id === p.id){
+    selected.el.classList.remove('selected');
+    selected = null;
+    return;
+  }
+  // only tech vs impact allowed
+  if(selected.kind === p.kind){
+    selected.el.classList.remove('selected');
+    selected = p;
+    p.el.classList.add('selected');
+    return;
+  }
+
+  const tech = selected.kind === 'tech' ? selected : p;
+  const impact = selected.kind === 'impact' ? selected : p;
+
+  const correct = tech.pairIndex === impact.pairIndex;
+  if(correct){
+    // draw line, freeze, show fact, update score
+    drawLineBetween(tech, impact, true);
+    freezePair(tech, impact);
+    showInfoCard(tech, impact, true);
+    score += 10;
+    matchedCount++;
+    learnedFacts.push(PAIRS[tech.pairIndex].fact);
+  } else {
+    drawLineBetween(tech, impact, false);
+    flashWrong([tech, impact]);
+    showInfoCard(tech, impact, false);
+    score -= 5;
+  }
+
+  // cleanup selection
+  selected.el.classList.remove('selected');
+  selected = null;
+  updateHUD();
+  if(matchedCount === PAIRS.length){
+    endGame(true);
+  }
+}
+
+/* visual: draw line (colored) */
+function drawLineBetween(a,b,isCorrect){
+  const rect = boardRect();
+  const ar = a.el.getBoundingClientRect();
+  const br = b.el.getBoundingClientRect();
+  const ax = ar.left - rect.left + ar.width/2;
+  const ay = ar.top - rect.top + ar.height/2;
+  const bx = br.left - rect.left + br.width/2;
+  const by = br.top - rect.top + br.height/2;
+
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute('x1', ax); line.setAttribute('y1', ay);
+  line.setAttribute('x2', ax); line.setAttribute('y2', ay); // animate to bx/by
+  line.setAttribute('stroke', isCorrect ? '#16a085' : '#e74c3c');
+  line.setAttribute('stroke-width', isCorrect ? 4 : 3);
+  line.setAttribute('stroke-linecap','round');
+  line.setAttribute('opacity','0.95');
+  svgLayer.appendChild(line);
+
+  // animate endpoint
+  const frames = 12;
+  let step = 0;
+  const dx = (bx-ax)/frames, dy = (by-ay)/frames;
+  const anim = setInterval(()=>{
+    step++;
+    const nx = ax + dx*step; const ny = ay + dy*step;
+    line.setAttribute('x2', nx); line.setAttribute('y2', ny);
+    if(step >= frames){ clearInterval(anim);
+      if(!isCorrect){
+        // fade out wrong line
+        line.animate([{opacity:1},{opacity:0}],{duration:600,fill:'forwards'});
+        setTimeout(()=>{ try{ line.remove(); }catch(e){} },650);
+      } else {
+        // keep line and attach to both elements for updates
+        a._line = line; b._line = line;
+      }
+    }
+  },18);
+}
+
+/* freeze pair - they stop moving */
+function freezePair(a,b){
+  a.frozen = true; b.frozen = true;
+  a.el.classList.add('frozen'); b.el.classList.add('frozen');
+  velocities.set(a.id,{vx:0,vy:0}); velocities.set(b.id,{vx:0,vy:0});
+}
+
+/* wrong flash */
+function flashWrong(arr){
+  arr.forEach(p=>{
+    p.el.animate([{ transform: p.el.style.transform }, { transform: p.el.style.transform + ' translateX(6px)' }, { transform: p.el.style.transform }], { duration:220, iterations:1 });
+    p.el.style.boxShadow = '0 0 0 6px rgba(231,76,60,0.08)';
+    setTimeout(()=>{ p.el.style.boxShadow=''; },260);
+  });
+}
+
+/* info card for correct/incorrect */
+let infoTimeout = null;
+function showInfoCard(tech, impact, correct){
+  clearTimeout(infoTimeout);
+  infoPopup.style.display = 'block';
+  infoPopup.style.opacity = '0';
+  // position bottom-left
+  infoPopup.style.left = '12px';
+  infoPopup.style.bottom = '12px';
+  if(correct){
+    infoTitle.textContent = `✅ ${PAIRS[tech.pairIndex].tech} → ${PAIRS[tech.pairIndex].impact}`;
+    infoText.textContent = PAIRS[tech.pairIndex].fact;
+    infoPopup.style.borderLeft = '6px solid #16a085';
+  } else {
+    infoTitle.textContent = `❌ Yanlış eşleşme`;
+    infoText.textContent = `Bu iki kavram doğrudan eşleşmiyor. Doğru eşleşmeyi tekrar dene.`;
+    infoPopup.style.borderLeft = '6px solid #e74c3c';
+  }
+  // fade in
+  infoPopup.animate([{opacity:0},{opacity:1}],{duration:220,fill:'forwards'});
+  infoTimeout = setTimeout(()=>{ infoPopup.style.display='none'; },4000);
+}
+
+/* animate loop for movement and updating frozen line positions */
+function animate(){
+  const rect = boardRect();
+  const width = rect.width;
+  const height = rect.height;
+  pieces.forEach(p=>{
+    if(p.frozen) return;
+    const v = velocities.get(p.id);
+    const el = p.el;
+    const x = parseFloat(el.style.left || '0');
+    const y = parseFloat(el.style.top || '0');
+    let nx = x + v.vx*1.8;
+    let ny = y + v.vy*1.8;
+    const size = el.offsetWidth;
+    if(nx <= 6){ nx = 6; v.vx *= -1; v.vx += rand(-0.05,0.05); }
+    if(nx + size >= width - 6){ nx = width - size - 6; v.vx *= -1; v.vx += rand(-0.05,0.05); }
+    if(ny <= 6){ ny = 6; v.vy *= -1; v.vy += rand(-0.05,0.05); }
+    if(ny + size >= height - 6){ ny = height - size - 6; v.vy *= -1; v.vy += rand(-0.05,0.05); }
+    el.style.left = nx + 'px';
+    el.style.top = ny + 'px';
+    // slight micro-rotation for life
+    const rot = Math.sin((nx+ny)/50)*2;
+    el.style.transform = `rotate(${rot}deg)`;
+  });
+
+  // update lines attached to frozen elements
+  pieces.forEach(p=>{
+    if(p.frozen && p._line){
+      updateLineForPiece(p);
+    }
+  });
+
+  animationId = requestAnimationFrame(animate);
+}
+
+/* update line endpoints for attached line */
+function updateLineForPiece(p){
+  const rect = boardRect();
+  const elRect = p.el.getBoundingClientRect();
+  const cx = elRect.left - rect.left + elRect.width/2;
+  const cy = elRect.top - rect.top + elRect.height/2;
+  const line = p._line;
+  if(!line) return;
+  const x1 = parseFloat(line.getAttribute('x1')), y1 = parseFloat(line.getAttribute('y1'));
+  const x2 = parseFloat(line.getAttribute('x2')), y2 = parseFloat(line.getAttribute('y2'));
+  const d1 = Math.hypot(cx-x1, cy-y1);
+  const d2 = Math.hypot(cx-x2, cy-y2);
+  if(d1 < d2){
+    line.setAttribute('x1', cx); line.setAttribute('y1', cy);
+  } else {
+    line.setAttribute('x2', cx); line.setAttribute('y2', cy);
+  }
+}
+
+/* HUD */
+function updateHUD(){
+  timerNum.textContent = Math.max(0, Math.floor(timeLeft));
+  // timer circle stroke-dashoffset: circumference = 2πr (r=44 => ~276.46)
+  const circ = 2*Math.PI*44;
+  const pct = Math.max(0, timeLeft/60);
+  timerCircle.style.strokeDashoffset = (1-pct)*circ;
+  scoreEl.textContent = score;
+  matchedCountEl.textContent = matchedCount;
+}
+
+/* start game */
+function startGame(){
+  if(running) return;
+  startOverlay.style.display = 'none';
+  createPieces();
+  running = true;
+  // animate
+  if(animationId) cancelAnimationFrame(animationId);
+  animationId = requestAnimationFrame(animate);
+  // timer
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    timeLeft -= 1;
+    updateHUD();
+    if(timeLeft <= 0){
+      endGame(false);
+    }
+  },1000);
+}
+
+/* end game */
+function endGame(allMatched){
+  running = false;
+  clearInterval(timerInterval);
+  if(animationId) cancelAnimationFrame(animationId);
+  // freeze velocities
+  pieces.forEach(p=> velocities.set(p.id,{vx:0,vy:0}));
+  // apply bonus
+  const bonus = Math.max(0, Math.floor(timeLeft));
+  score += bonus;
+  updateHUD();
+  // overlay result
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.style.zIndex = 99;
+  const card = document.createElement('div'); card.className='card';
+  card.innerHTML = `<h2>${allMatched? 'Tebrikler!':'Süre doldu'}</h2>
+    <p>Puanın: <strong>${score}</strong> (erken bitirme bonusu: ${bonus})</p>
+    <p>Eşleşmeler: <strong>${matchedCount}</strong> / ${PAIRS.length}</p>
+    <h3 style="margin-top:10px;color:var(--accent)">Öğrendiklerin</h3>
+    <div style="max-height:220px;overflow:auto;margin-top:8px;padding-right:8px">` +
+    (learnedFacts.length ? learnedFacts.map(f=>`<div style="padding:8px;border-radius:8px;background:#f7fffb;margin-bottom:6px;border:1px solid rgba(0,0,0,0.04)">${f}</div>`).join('') : '<div style="color:#666">Henüz doğru eşleşme yok.</div>') +
+    `</div>
+    <div class="flex-row" style="margin-top:12px">
+      <button id="replayBtn" class="btn">Tekrar Oyna</button>
+      <button id="closeBtn" class="btn secondary">Kapat</button>
+    </div>`;
+  overlay.appendChild(card);
+  board.appendChild(overlay);
+  document.getElementById('replayBtn').addEventListener('click', ()=>{
+    overlay.remove(); resetGame(); startGame();
+  });
+  document.getElementById('closeBtn').addEventListener('click', ()=>{ overlay.remove(); startOverlay.style.display='flex'; });
+}
+
+/* reset */
+function resetGame(){
+  // clear svg lines
+  while(svgLayer.firstChild) svgLayer.removeChild(svgLayer.firstChild);
+  // stop animation and timers
+  clearInterval(timerInterval);
+  if(animationId) cancelAnimationFrame(animationId);
+  running = false;
+  pieces = [];
+  velocities.clear();
+  selected = null;
+  matchedCount = 0;
+  score = 0;
+  timeLeft = 60;
+  learnedFacts = [];
+  updateHUD();
+  piecesContainer.innerHTML = '';
+  startOverlay.style.display = 'flex';
+  // hide info popup
+  infoPopup.style.display = 'none';
+}
+
+/* hints: reveal one correct pair visually (outline) */
+function giveHint(){
+  if(!running && startOverlay.style.display!=='none') { // allow hints from overlay too
+    // find a random pair index
+  }
+  if(hintsLeft <= 0) { alert('İpucu hakkın kalmadı.'); return; }
+  // find an unmatched pair
+  const unmatched = [];
+  for(let i=0;i<PAIRS.length;i++){
+    // check if any piece with pairIndex i is frozen -> then matched
+    const hasFrozen = pieces.some(p=>p.pairIndex===i && p.frozen);
+    if(!hasFrozen) unmatched.push(i);
+  }
+  if(unmatched.length===0){ alert('Tüm eşleşmeler tamamlandı.'); return; }
+  const idx = unmatched[Math.floor(Math.random()*unmatched.length)];
+  // highlight the tech and impact elements for that idx briefly
+  const tech = pieces.find(p=>p.kind==='tech' && p.pairIndex===idx);
+  const impact = pieces.find(p=>p.kind==='impact' && p.pairIndex===idx);
+  if(tech && impact){
+    tech.el.animate([{boxShadow:'0 0 0 0 rgba(29,120,116,0)'},{boxShadow:'0 0 0 12px rgba(29,120,116,0.12)'},{boxShadow:'0 0 0 0 rgba(29,120,116,0)'}],{duration:900});
+    impact.el.animate([{boxShadow:'0 0 0 0 rgba(29,120,116,0)'},{boxShadow:'0 0 0 12px rgba(29,120,116,0.12)'},{boxShadow:'0 0 0 0 rgba(29,120,116,0)'}],{duration:900});
+    hintsLeft--;
+    // optional score penalty? here no penalty, but you can apply -2 if desired
+  }
+}
+
+/* events */
+startBtn.addEventListener('click', ()=>{ startGame(); });
+restartBtn.addEventListener('click', ()=>{ resetGame(); });
+hintBtn.addEventListener('click', ()=>{ giveHint(); });
+
+/* click board to clear selection */
+board.addEventListener('click', (e)=>{
+  if(selected){
+    selected.el.classList.remove('selected');
+    selected = null;
+  }
+});
+
+/* handle window resize: adjust frozen lines */
+window.addEventListener('resize', ()=>{
+  pieces.forEach(p=>{ if(p.frozen && p._line) updateLineForPiece(p); });
+});
+
+/* initial reset */
+resetGame();
+
+/* small helper: update line endpoints for frozen pieces (same as before) */
+function updateLineForPiece(p){
+  const rect = boardRect();
+  const elRect = p.el.getBoundingClientRect();
+  const cx = elRect.left - rect.left + elRect.width/2;
+  const cy = elRect.top - rect.top + elRect.height/2;
+  const line = p._line;
+  if(!line) return;
+  const x1 = parseFloat(line.getAttribute('x1')), y1 = parseFloat(line.getAttribute('y1'));
+  const x2 = parseFloat(line.getAttribute('x2')), y2 = parseFloat(line.getAttribute('y2'));
+  const d1 = Math.hypot(cx-x1, cy-y1);
+  const d2 = Math.hypot(cx-x2, cy-y2);
+  if(d1 < d2){
+    line.setAttribute('x1', cx); line.setAttribute('y1', cy);
+  } else {
+    line.setAttribute('x2', cx); line.setAttribute('y2', cy);
+  }
+}
+
+/* Optional: keyboard shortcuts for testing (R restart) */
+window.addEventListener('keydown', (e)=>{
+  if(e.key.toLowerCase()==='r'){ resetGame(); }
+});
+</script>
+</body>
+</html>
